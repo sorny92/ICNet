@@ -14,15 +14,37 @@ Based on [PSPNet](https://github.com/hszhao/PSPNet), this repository is build fo
    git clone --recursive https://github.com/hszhao/ICNet.git
    ```
 
-2. Build Caffe and matcaffe:
+2. Build Caffe and python:
 
    ```shell
    cd $ICNET_ROOT/PSPNet
    cp Makefile.config.example Makefile.config
    vim Makefile.config
-   make -j8 && make matcaffe
+   make -j8 && make py
    cd ..
    ```
+
+  - Posible errors that can happen:
+    - hdf5 can't be found:  
+    On Makefile.config find the next lines and set them as this piece of code:
+     ```
+     INCLUDE_DIRS := $(PYTHON_INCLUDE) /usr/local/include /usr/include/hdf5/serial
+     IBRARY_DIRS := $(PYTHON_LIB) /usr/local/lib /usr/lib /usr/lib/x86_64-linux-gnu
+     ```
+     On Makefile, change the next line:
+     ```
+     LIBRARIES += glog gflags protobuf boost_system boost_filesystem m hdf5_hl hdf5
+     ```
+     to:
+     ```
+     LIBRARIES += glog gflags protobuf boost_system boost_filesystem m hdf5_serial_hl hdf5_serial
+     ```
+    - Problem with error: 
+    ```
+    function “atomicAdd(double *, double)” has already been defined
+    ```
+    Do what is explained [here](https://stackoverflow.com/questions/39274472/error-function-atomicadddouble-double-has-already-been-defined).
+
 
 3. Evaluation mIoU:
 

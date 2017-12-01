@@ -3,6 +3,8 @@ import matplotlib.pyplot as plt
 import glob
 import caffe
 from matplotlib import pyplot as plt
+import cv2
+from timeit import default_timer as timer
 
 # EJECUTAR ESTO ANTES, POR SI ACASO
 # export LD_LIBRARY_PATH=/usr/local/cuda/lib64:/home/localadm/ICNet/PSPNet/build/lib/ && export PYTHONPATH=/home/localadm/ICNet/PSPNet/python:/home/localadm/ICNet/PSPNet/src/caffe/proto/
@@ -29,32 +31,29 @@ transformer = caffe.io.Transformer({'data': net.blobs['data'].data.shape})
 transformer.set_transpose('data', (2,0,1))
 transformer.set_channel_swap('data', (2,1,0))
 transformer.set_raw_scale('data', 255.0)
+transformer.set_mean('data',np.asarray([123.68, 116.779, 103.939]))
 
-images_to_test = glob.glob('/home/localadm/ICNet/evaluation/samplelist/*.jpg')
+images_to_test = sorted(glob.glob('/media/localadm/data/dataset/20170530-12-31/front/*'))
 for image_path in images_to_test:
+    start = timer()
     im = caffe.io.load_image(image_path)
-    print im.shape
     im = caffe.io.resize_image(im, 
             (input_image_size_h,
              input_image_size_w),
              interp_order=3)
-    im_mean = np.zeros((input_image_size_h, input_image_size_w, 3))
-    im_mean[:,:,0] = mean_image_r
-    im_mean[:,:,1] = mean_image_g
-    im_mean[:,:,2] = mean_image_b
-    print im
-    im = (im*255 - im_mean)/255
 
-    print im.shape
     net.blobs['data'].data[...] = transformer.preprocess('data', im)
+    prepross_t = timer()
+    print('Preprocess: {}'.format(prepross_t-start))
     out = net.forward()
-    seg_result = out['conv6_interp']
-    seg_result = seg_result[0,:,:,:]
-    aux_layer_cls = seg_result
-    print aux_layer_cls.shape
-    aux_layer_cls = np.exp(aux_layer_cls)
-    aux_layer_cls = aux_layer_cls/(np.add(aux_layer_cls, 3))
+    forward_t = timer()
+    print('forward: {}'.format(forward_t - prepross_t))
+    aux_layer_cls = cv2.exp(out['conv6_interp'][0,:,:,:])
+    aux_layer_cls = cv2.divide(aux_layer_cls, cv2.add(aux_layer_cls, 3))
     aux_layer_cls = aux_layer_cls.argmax(0)
-    fig = plt.figure("Segmentation")
-    plt.imshow(aux_layer_cls, interpolation='nearest')
-    plt.show()
+    aux_layer_cls = np.divide(aux_layer_cls, 13.)
+    cv2.imshow('frame', aux_layer_cls)
+    end = timer()
+    print('Postprocess: {}'.format(end - forward_t))
+    print('Total time: {}\n'.format(end-start))
+    cv2.waitKey(30)
